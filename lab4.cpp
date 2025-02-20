@@ -2,63 +2,63 @@
 #include <vector>
 #include <cmath>
 #include <limits>
-#include <algorithm>
 
 using namespace std;
 
-// функция для подсчета суммы отклонений в кластере
-double calculateClusterCost(const vector<int>& arr, int start, int end) {
-    double mean = 0;
-    for (int i = start; i <= end; ++i) {
-        mean += arr[i];
-    }
-    mean /= (end - start + 1); // среднее значение кластера
+// Функция для подсчёта суммы отклонений в кластере
+vector<vector<double>> costMatrix;
 
-    double cost = 0;
-    for (int i = start; i <= end; ++i) {
-        cost += abs(arr[i] - mean); // сумма модулей отклонений
-    }
-    return cost;
-}
-
-// рекурсивная функция для поиска оптимального разбиения
-void findOptimalClustering(const vector<int>& arr, int k, int start, vector<int>& currentCluster, vector<vector<int>>& bestClusters, double& minCost) {
-    if (k == 1) {
-        // базовый случай: один кластер от start до конца массива
-        double cost = calculateClusterCost(arr, start, arr.size() - 1);
-        if (cost < minCost) {
-            minCost = cost;
-            bestClusters.clear();
-            bestClusters.push_back(vector<int>(arr.begin() + start, arr.end()));
+void computeCostMatrix(const vector<int>& arr) {
+    int n = arr.size();
+    costMatrix.assign(n, vector<double>(n, 0));
+    
+    for (int i = 0; i < n; ++i) {
+        double sum = 0, mean = 0;
+        for (int j = i; j < n; ++j) {
+            sum += arr[j];
+            mean = sum / (j - i + 1);
+            double cost = 0;
+            for (int k = i; k <= j; ++k) {
+                cost += abs(arr[k] - mean);
+            }
+            costMatrix[i][j] = cost;
         }
-        return;
-    }
-
-    // перебираем все возможные позиции разделения кластера
-    for (int i = start; i < arr.size() - (k - 1); ++i) {
-        // добавляем текущий кластер
-        for (int j = start; j <= i; ++j) {
-            currentCluster.push_back(arr[j]);
-        }
-
-        // рекурсивно ищем разбиение для оставшихся кластеров
-        vector<int> nextCluster;
-        findOptimalClustering(arr, k - 1, i + 1, nextCluster, bestClusters, minCost);
-
-        // удаляем текущий кластер
-        currentCluster.clear();
     }
 }
 
-// основная функция кластеризации
+// Функция для разбиения массива на k кластеров
 vector<vector<int>> clusterArray(const vector<int>& arr, int k) {
-    vector<vector<int>> bestClusters;
-    double minCost = numeric_limits<double>::max();
-    vector<int> currentCluster;
-
-    findOptimalClustering(arr, k, 0, currentCluster, bestClusters, minCost);
-
-    return bestClusters;
+    int n = arr.size();
+    computeCostMatrix(arr);
+    
+    vector<vector<double>> dp(k, vector<double>(n, numeric_limits<double>::max()));
+    vector<vector<int>> split(k, vector<int>(n, -1));
+    
+    for (int j = 0; j < n; ++j) {
+        dp[0][j] = costMatrix[0][j];
+    }
+    
+    for (int clusters = 1; clusters < k; ++clusters) {
+        for (int j = clusters; j < n; ++j) {
+            for (int i = clusters - 1; i < j; ++i) {
+                double cost = dp[clusters - 1][i] + costMatrix[i + 1][j];
+                if (cost < dp[clusters][j]) {
+                    dp[clusters][j] = cost;
+                    split[clusters][j] = i;
+                }
+            }
+        }
+    }
+    
+    vector<vector<int>> clusters(k);
+    int end = n - 1;
+    for (int i = k - 1; i >= 0; --i) {
+        int start = (i > 0) ? split[i][end] + 1 : 0;
+        clusters[i].assign(arr.begin() + start, arr.begin() + end + 1);
+        end = start - 1;
+    }
+    
+    return clusters;
 }
 
 int main() {
