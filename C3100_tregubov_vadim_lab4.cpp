@@ -6,87 +6,86 @@
 
 using namespace std;
 
-// Функция для подсчета суммы отклонений в кластере
+// функция для подсчета суммы отклонений в кластере
 double calculateClusterCost(const vector<int>& arr, int start, int end) {
     double mean = 0;
     for (int i = start; i <= end; ++i) {
         mean += arr[i];
     }
-    mean /= (end - start + 1); // Среднее значение кластера
+    mean /= (end - start + 1); // среднее значение кластера
 
     double cost = 0;
     for (int i = start; i <= end; ++i) {
-        cost += abs(arr[i] - mean); // Сумма модулей отклонений
+        cost += abs(arr[i] - mean); // сумма модулей отклонений
     }
     return cost;
 }
 
-// Рекурсивная функция для полного перебора кластеров
-double findOptimalClustering(const vector<int>& arr, int k, int start, vector<vector<double>>& memo) {
+// рекурсивная функция для поиска оптимального разбиения
+void findOptimalClustering(const vector<int>& arr, int k, int start, vector<int>& currentCluster, vector<vector<int>>& bestClusters, double& minCost) {
     if (k == 1) {
-        // Базовый случай: один кластер от start до конца массива
-        return calculateClusterCost(arr, start, arr.size() - 1);
-    }
-    if (memo[start][k] != -1) {
-        // Используем мемоизацию для предотвращения повторных вычислений
-        return memo[start][k];
+        // базовый случай: один кластер от start до конца массива
+        double cost = calculateClusterCost(arr, start, arr.size() - 1);
+        if (cost < minCost) {
+            minCost = cost;
+            bestClusters.clear();
+            bestClusters.push_back(vector<int>(arr.begin() + start, arr.end()));
+        }
+        return;
     }
 
-    double minCost = numeric_limits<double>::max(); // Инициализируем минимальную стоимость большим значением
-
-    // Перебираем все возможные позиции разделения кластера
+    // перебираем все возможные позиции разделения кластера
     for (int i = start; i < arr.size() - (k - 1); ++i) {
-        double currentCost = calculateClusterCost(arr, start, i) +
-                             findOptimalClustering(arr, k - 1, i + 1, memo);
-        minCost = min(minCost, currentCost);
-    }
+        // добавляем текущий кластер
+        for (int j = start; j <= i; ++j) {
+            currentCluster.push_back(arr[j]);
+        }
 
-    return memo[start][k] = minCost; // Сохраняем результат в таблицу мемоизации
+        // рекурсивно ищем разбиение для оставшихся кластеров
+        vector<int> nextCluster;
+        findOptimalClustering(arr, k - 1, i + 1, nextCluster, bestClusters, minCost);
+
+        // удаляем текущий кластер
+        currentCluster.clear();
+    }
 }
 
-// Основная функция кластеризации
-// Параметры:
-// arr - массив чисел, k - количество кластеров
-// Возвращает минимальную сумму отклонений
+// основная функция кластеризации
+vector<vector<int>> clusterArray(const vector<int>& arr, int k) {
+    vector<vector<int>> bestClusters;
+    double minCost = numeric_limits<double>::max();
+    vector<int> currentCluster;
 
-double clusterArray(const vector<int>& arr, int k) {
-    int n = arr.size();
+    findOptimalClustering(arr, k, 0, currentCluster, bestClusters, minCost);
 
-    // Таблица мемоизации размером O(N * K)
-    vector<vector<double>> memo(n, vector<double>(k + 1, -1)); 
-
-    return findOptimalClustering(arr, k, 0, memo);
+    return bestClusters;
 }
 
 int main() {
-    // Пример ввода
-    vector<int> arr = {1, -2, 3, 4, -5, 6}; // Массив чисел
-    int k = 3; // Количество кластеров
+    vector<int> arr = {1, -2, 3, 4, -5, 6};
+    int k = 3;
 
-    // Вызов алгоритма кластеризации
-    double result = clusterArray(arr, k);
+    vector<vector<int>> clusters = clusterArray(arr, k);
 
-    // Вывод результата
-    cout << "Минимальная сумма отклонений: " << result << endl;
+    cout << "Кластеры:" << endl;
+    for (size_t i = 0; i < clusters.size(); ++i) {
+        cout << "Кластер " << i + 1 << ": ";
+        for (int num : clusters[i]) {
+            cout << num << " ";
+        }
+        cout << endl;
+    }
+
+    /*
+    Время:
+    calculateClusterCost: O(n) для вычисления среднего и суммы отклонений.
+    findOptimalClustering: O(n * k) из-за перебора всех возможных разбиений.
+    Итого: O(n^2 * k) в худшем случае из-за рекурсивного перебора.
+
+    Память:
+    Используется O(n) для хранения текущего кластера и O(n) для хранения лучших кластеров.
+    Итого: O(n).
+    */
 
     return 0;
 }
-
-/*
-Память:
-1. memo (N * (K + 1)): каждый double занимает 8 байт. Пример: N = 6, K = 3 -> 6 * 4 * 8 = 192 байта.
-2. Локальные переменные (на вызов): 36 байт (4 double и int).
-
-В сумме:
-- memo: 192 байта.
-- Переменные: 36 байт.
-Итого: ~228 байт.
-
-Время:
-1. Перебор всех разбиений O(2^N).
-2. Мемоизация ускоряет, но не убирает O(2^N).
-
-Ограничения:
-1. Максимум 25 элементов в массиве.
-2. K намного меньше N.
-*/
