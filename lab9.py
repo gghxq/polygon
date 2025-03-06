@@ -1,17 +1,23 @@
-# функция для нахождения длины самой длинной последовательности одинаковых элементов
+import numpy as np
 
 def find_longest_sequence(arr):
-    if not arr:
+    if len(arr) == 0:
         return 0  # если массив пустой, то длина последовательности 0
 
-    max_length = 1
-    current_length = 1
+    # преобразуем список в массив numpy
+    arr = np.array(arr)
 
-    for i in range(1, len(arr)):
-        if arr[i] == arr[i - 1]:
-            current_length += 1
-            max_length = max(max_length, current_length)
-        else:
-            current_length = 1
+    # разница между соседними элементами
+    diff = np.diff(arr)
 
-    return max_length
+    # индексы где элементы меняются
+    change_indices = np.where(diff != 0)[0] + 1
+
+    # начало и конец массива
+    change_indices = np.concatenate(([0], change_indices, [len(arr)]))
+
+    # находим длины последовательностей
+    lengths = np.diff(change_indices)
+
+    # ответ
+    return np.max(lengths)
